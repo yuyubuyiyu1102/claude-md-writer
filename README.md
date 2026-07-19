@@ -7,15 +7,20 @@
 ## 结构
 
 ```
-skills/claude-md-writer/
-├── SKILL.md                         # 主文件，入口路由 + 三模式逻辑 + 门禁
-├── references/
-│   └── authoritative-sources.md     # 10 个权威来源（Tier 1/2/3）
-└── templates/
-    ├── new-project-prompt.md        # Mode A：一键 Draft 模板
-    ├── analyze-checklist.md         # Mode B：分析清单
-    └── global-audit-guide.md        # Mode C：全局审计指南
+├── skills/claude-md-writer/         # Skill 主体
+│   ├── SKILL.md                     # 入口路由 + 三模式逻辑 + 门禁
+│   ├── references/
+│   │   └── authoritative-sources.md # 10 个权威来源（Tier 1/2/3）
+│   └── templates/
+│       ├── new-project-prompt.md    # Mode A：一键 Draft 模板
+│       ├── analyze-checklist.md     # Mode B：分析清单
+│       └── global-audit-guide.md    # Mode C：全局审计指南
+├── specs/                           # 设计约束文档
+├── plans/                           # 执行计划（与 spec 分离）
+└── ci/                              # CI 辅助脚本
 ```
+
+> **约定**: `specs/` 只写"达成什么约束"，`plans/` 只写"怎么改文件"。两者不混。
 
 ## 安装
 
@@ -37,7 +42,9 @@ Copy-Item -Recurse skills/claude-md-writer $env:USERPROFILE\.claude\skills\claud
 
 ## 设计
 
-见 [specs/2026-07-19-claude-md-writer-skill-design.md](specs/2026-07-19-claude-md-writer-skill-design.md)
+- [初始设计](specs/2026-07-19-claude-md-writer-skill-design.md) — 三模式路由、门禁系统、三层宪法继承
+- [输出质量修复](specs/2026-07-19-output-quality-fix.md) — v1.0.0 宪法风格 + 画像感知 + 过程式检测
+- 执行计划见 [plans/](plans/)
 
 ## 仓库
 
