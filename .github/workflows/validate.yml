@@ -111,18 +111,6 @@ jobs:
             skills/**/*.md
             specs/**/*.md
             README.md
-          config: |
-            {
-              "default": true,
-              "MD013": false,
-              "MD033": false,
-              "MD041": false,
-              "MD024": false,
-              "MD036": false,
-              "MD040": false,
-              "MD058": false,
-              "MD060": false
-            }
 
   summary:
     needs: validate
