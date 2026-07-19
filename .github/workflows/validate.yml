@@ -1,0 +1,139 @@
+name: Skill Validation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Required files exist
+        run: |
+          BASE="skills/claude-md-writer"
+          MISSING=0
+          for f in \
+            "$BASE/SKILL.md" \
+            "$BASE/references/authoritative-sources.md" \
+            "$BASE/templates/new-project-prompt.md" \
+            "$BASE/templates/analyze-checklist.md" \
+            "$BASE/templates/global-audit-guide.md" \
+            "specs/2026-07-19-claude-md-writer-skill-design.md" \
+            "README.md" \
+            ".gitignore"
+          do
+            if [ ! -f "$f" ]; then echo "MISSING: $f"; MISSING=1; fi
+          done
+          if [ $MISSING -eq 1 ]; then echo "FAIL: missing required files"; exit 1; fi
+          echo "PASS: all required files exist"
+
+      - name: SKILL.md frontmatter valid
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          HEAD=$(head -5 "$FILE")
+          if ! echo "$HEAD" | grep -q "---"; then echo "FAIL: no YAML frontmatter delimiter"; exit 1; fi
+          if ! echo "$HEAD" | grep -q "name:"; then echo "FAIL: no name in frontmatter"; exit 1; fi
+          if ! echo "$HEAD" | grep -q "description:"; then echo "FAIL: no description in frontmatter"; exit 1; fi
+          echo "PASS: frontmatter valid"
+
+      - name: HARD GATE block present
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "HARD GATE" "$FILE" || { echo "FAIL: HARD GATE block missing"; exit 1; }
+          grep -q "PREREQUISITE" "$FILE" || { echo "FAIL: PREREQUISITE gate type missing"; exit 1; }
+          grep -q "SELF-CHECK" "$FILE" || { echo "FAIL: SELF-CHECK gate type missing"; exit 1; }
+          grep -q "USER-GATE" "$FILE" || { echo "FAIL: USER-GATE gate type missing"; exit 1; }
+          echo "PASS: HARD GATE block complete"
+
+      - name: USER-GATE stops exist
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          COUNT=$(grep -c "USER-GATE" "$FILE" || true)
+          STOP_COUNT=$(grep -c "STOP HERE" "$FILE" || true)
+          echo "USER-GATE count: $COUNT, STOP HERE count: $STOP_COUNT"
+          if [ "$COUNT" -lt 4 ]; then echo "FAIL: fewer than 4 USER-GATE labels (expected 6+)"; exit 1; fi
+          if [ "$STOP_COUNT" -lt 4 ]; then echo "FAIL: fewer than 4 STOP HERE instructions"; exit 1; fi
+          echo "PASS: USER-GATE stops present"
+
+      - name: Override Exception constraints present
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "Override" "$FILE" || { echo "FAIL: Override exception block missing"; exit 1; }
+          grep -q "CANNOT be used for safety" "$FILE" || { echo "FAIL: safety constraint on Override missing"; exit 1; }
+          grep -q "Overrides Global:" "$FILE" || { echo "FAIL: Override marker format missing"; exit 1; }
+          echo "PASS: Override Exception constraints present"
+
+      - name: Scanning limits present
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "node_modules" "$FILE" || { echo "FAIL: ignore list missing"; exit 1; }
+          grep -q "depth" "$FILE" || { echo "FAIL: depth limit missing"; exit 1; }
+          grep -q "EACCES" "$FILE" || { echo "FAIL: EACCES handling missing"; exit 1; }
+          echo "PASS: scanning limits present"
+
+      - name: Safety rules — no silent settings.json + symlink
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "silently.*settings.json" "$FILE" || { echo "FAIL: settings.json safety rule missing"; exit 1; }
+          grep -q "symlink" "$FILE" || { echo "FAIL: symlink safety rule missing"; exit 1; }
+          echo "PASS: safety rules present"
+
+      - name: Anti-Patterns #1 is failure mode
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "#1 FAILURE MODE" "$FILE" || { echo "FAIL: #1 FAILURE MODE not highlighted"; exit 1; }
+          echo "PASS: Anti-Patterns #1 present"
+
+      - name: Three mode routes present
+        run: |
+          FILE="skills/claude-md-writer/SKILL.md"
+          grep -q "Mode A" "$FILE" || { echo "FAIL: Mode A missing"; exit 1; }
+          grep -q "Mode B" "$FILE" || { echo "FAIL: Mode B missing"; exit 1; }
+          grep -q "Mode C" "$FILE" || { echo "FAIL: Mode C missing"; exit 1; }
+          echo "PASS: three modes present"
+
+      - name: Templates non-empty
+        run: |
+          for f in skills/claude-md-writer/templates/*.md; do
+            LINES=$(wc -l < "$f")
+            if [ "$LINES" -lt 5 ]; then echo "FAIL: $f too short ($LINES lines)"; exit 1; fi
+            echo "  $f: $LINES lines OK"
+          done
+          echo "PASS: all templates non-empty"
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            skills/**/*.md
+            specs/**/*.md
+            README.md
+          config: |
+            {
+              "default": true,
+              "MD013": false,
+              "MD033": false,
+              "MD041": false,
+              "MD024": false,
+              "MD036": false,
+              "MD040": false,
+              "MD058": false,
+              "MD060": false
+            }
+
+  summary:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Final verdict
+        run: |
+          if [ "${{ needs.validate.result }}" = "success" ]; then
+            echo "::notice:: SKILL VALIDATION: PASS — Ready for deployment"
+          else
+            echo "::error:: SKILL VALIDATION: FAIL — Check logs above"
+            exit 1
+          fi
