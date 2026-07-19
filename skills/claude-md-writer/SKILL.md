@@ -76,9 +76,9 @@ Ambiguous input (e.g. "look at the rules") defaults to Mode B, with a hint about
 2. `PREREQUISITE` **Extract user profile** — From global CLAUDE.md output: language preference, verbosity style (caveman/full), autonomy mode (discuss/implement phases), hard constraints. Only extract explicitly stated content — do not infer. Write these down so you can reference them in step 5.
 3. `PREREQUISITE` **Scan project** — Glob depth=2, ignore: `node_modules/`, `dist/`, `build/`, `.git/`, `coverage/`, `target/`, `vendor/`, `.next/`, `__pycache__/`, `.tox/`. Detect: directory structure, language/framework (package.json, go.mod, Cargo.toml, etc.), build tools (Makefile, justfile, CI configs), test conventions (file patterns, top 2 levels only), code style (sample up to 5 key source files, prefer src/, main entry, package entry). Use real Glob/Read tool calls — do not guess.
 4. `USER-GATE` **Mature project check** — If project has many existing files, ask user: "Detected a mature project. Create new CLAUDE.md?" **STOP HERE.** Wait for user response. Do NOT proceed to step 5 until user replies.
-5. `SELF-CHECK` **Generate draft** — PREREQUISITES: steps 1-4 MUST be complete. Before generating, self-check: (a) Did I read global CLAUDE.md with Read tool? (b) Did I write down user profile? (c) Did I scan the project with Glob? If any answer is NO — go back, do NOT generate. Use `templates/new-project-prompt.md`. Align language, style, and autonomy rules with user profile from step 2. Target: concise, project-specific, under 300 lines.
+5. `SELF-CHECK` **Generate draft** — PREREQUISITES: steps 1-4 MUST be complete. Before generating, self-check: (a) Did I read global CLAUDE.md with Read tool? (b) Did I write down user profile? (c) Did I scan the project with Glob? (d) Is every rule declarative (not a procedural step)? Check against Constraint 1 if/when boundary table. If any answer is NO — go back, do NOT generate. Use `templates/new-project-prompt.md`. Align language, style, and autonomy rules with user profile from step 2. Target: concise, project-specific, under 300 lines.
 6. `PREREQUISITE` **Validate vs global** — Compare draft against global CLAUDE.md. Auto-correct Override conflicts BEFORE presenting to user. If Override Exception applies (language/docs/tech-stack only), include `> [!NOTE] Overrides Global: <reason>` marker and highlight for user attention. GATE: Do NOT present a draft that you know violates the global constitution.
-7. `USER-GATE` **Present for batch confirmation** — Show draft with parameter checklist (tech stack, build commands, test commands, code style choices). **STOP HERE. Wait for explicit user confirmation.** Do NOT proceed to step 8 until user confirms. If user asks questions about the draft — answer, but do NOT write.
+7. `USER-GATE` **Present for batch confirmation** — Show draft with profile-filtered parameter checklist. Technical facts come from workspace discovery (Step 3: Scan project), not from user confirmation. If profile from Step 2 says beginner: ask behavioral preferences ONLY, 0 technical questions. See template Part 2. **STOP HERE. Wait for explicit user confirmation.** Do NOT proceed to step 8 until user confirms. If user asks questions about the draft — answer, but do NOT write.
 8. **Write** — Write `CLAUDE.md` to project root. Only after step 7 USER-GATE passes. If target exists, diff first then overwrite.
 
 ---
@@ -164,6 +164,8 @@ Recommended workflow: `/init` → this skill (Mode B, audit) → refine.
 ## Anti-Patterns
 
 **#1 FAILURE MODE: Generating without reading or scanning.** You did not run Read/Glob tools → you have no business generating a draft.
+
+- Writing execution plans instead of rules -- CLAUDE.md is a constitution. Every rule must be declarative. "When implementing X, first do Y then Z" belongs in a skill.
 
 Other violations:
 
