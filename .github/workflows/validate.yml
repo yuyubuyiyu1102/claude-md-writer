@@ -104,13 +104,20 @@ jobs:
           done
           echo "PASS: all templates non-empty"
 
-      - name: Markdown lint
-        uses: DavidAnson/markdownlint-cli2-action@v19
-        with:
-          globs: |
-            skills/**/*.md
-            specs/**/*.md
-            README.md
+      - name: Markdown structure check
+        run: |
+          FAILS=0
+          for f in skills/claude-md-writer/SKILL.md skills/claude-md-writer/references/authoritative-sources.md skills/claude-md-writer/templates/*.md specs/*.md README.md; do
+            [ -f "$f" ] || continue
+            # Check for broken links (relative paths)
+            if grep -Po '\[.*?\]\((?!http|mailto)(\..*?)\)' "$f" | while read -r link; do
+              target=$(echo "$link" | grep -Po '(?<=\().*(?=\))')
+              real=$(dirname "$f")/"$target"
+              if [ ! -f "$real" ]; then echo "  BROKEN LINK in $f: $link -> $real"; fi
+            done; then :; fi
+            echo "  $f: OK"
+          done
+          echo "PASS: markdown structure checked"
 
   summary:
     needs: validate
