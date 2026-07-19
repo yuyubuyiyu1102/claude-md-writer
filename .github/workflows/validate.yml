@@ -34,7 +34,7 @@ jobs:
         run: |
           FILE="skills/claude-md-writer/SKILL.md"
           HEAD=$(head -5 "$FILE")
-          if ! echo "$HEAD" | grep -q -F "---"; then echo "FAIL: no YAML frontmatter delimiter"; exit 1; fi
+          if ! echo "$HEAD" | grep -qF -- "---"; then echo "FAIL: no YAML frontmatter delimiter"; exit 1; fi
           if ! echo "$HEAD" | grep -q "name:"; then echo "FAIL: no name in frontmatter"; exit 1; fi
           if ! echo "$HEAD" | grep -q "description:"; then echo "FAIL: no description in frontmatter"; exit 1; fi
           echo "PASS: frontmatter valid"
