@@ -40,11 +40,12 @@ Copy-Item -Recurse skills/claude-md-writer $env:USERPROFILE\.claude\skills\claud
 | 审查优化已有 CLAUDE.md | "审查 CLAUDE.md" |
 | 优化全局配置 | "优化宪法" |
 
-## 设计
+## 版本
 
-- [初始设计](specs/2026-07-19-claude-md-writer-skill-design.md) — 三模式路由、门禁系统、三层宪法继承
-- [输出质量修复](specs/2026-07-19-output-quality-fix.md) — v1.0.0 宪法风格 + 画像感知 + 过程式检测
-- 执行计划见 [plans/](plans/)
+| 版本 | 内容 | 设计文档 |
+|------|------|---------|
+| v1.0.0 | 三模式路由、门禁系统、三层宪法继承、输出质量约束 | [初始设计](specs/2026-07-19-claude-md-writer-skill-design.md) · [输出质量](specs/2026-07-19-output-quality-fix.md) |
+| v1.1.0 | 门禁加固（SELF-CHECK 三叉逻辑、显式规则映射、强制清单输出）+ 非标准项目适配（Standard/Non-standard/Mixed 分类、7 类项目模板） | [门禁加固计划](plans/2026-07-20-gate-hardening-plan.md) · [Releases](https://github.com/yuyubuyiyu1102/claude-md-writer/releases) |
 
 ## 仓库
 
