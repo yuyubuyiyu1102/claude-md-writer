@@ -85,6 +85,69 @@ Cross-reference external docs rather than duplicating them (Morph LLM Guide prin
 - API: `docs/api.md`
 ```
 
+## Non-Standard Projects
+
+When Step 3 detects Non-standard or Mixed type — use this adapter for the non-code sections.
+
+### Commands Section
+
+Even without build/compile step, provide verification commands agent can execute. **Adapt to OS shell detected in scan.**
+
+| Action | Command |
+|--------|---------|
+| Verify structure | `<cmd to check required files exist>` — OS-aware |
+| Validate config | `<cmd to lint/check config files>` — OS-aware |
+| Check format | `<cmd to verify file formatting>` — OS-aware |
+
+If absolutely no automated command applies, state: "No automated verification available. Manual checks: <list specific checks>."
+
+**Examples — Unix (bash/sh):**
+
+```
+| Action | Command |
+|--------|---------|
+| Verify skill files | `for f in skills/*/SKILL.md; do echo "$f: $(wc -l < "$f") lines"; done` |
+| Validate YAML | `python -c "import yaml; yaml.safe_load(open('config.yaml'))"` |
+| Check structure | `ls README.md CLAUDE.md skills/ > /dev/null && echo "OK"` |
+```
+
+**Examples — Windows (PowerShell):**
+
+```
+| Action | Command |
+|--------|---------|
+| Verify skill files | `Get-ChildItem skills/*/SKILL.md | ForEach-Object { "$($_.Name): $((Get-Content $_.FullName | Measure-Object -Line).Lines) lines" }` |
+| Validate YAML | `python -c "import yaml; yaml.safe_load(open('config.yaml'))"` |
+| Check structure | `if (Test-Path README.md -and Test-Path CLAUDE.md -and Test-Path skills) { Write-Host "OK" }` |
+```
+
+**Rule:** write examples matching the OS from `uname -s` / `$env:OS` detected during Step 3 scan. If OS unclear, provide both variants or default to project's primary platform.
+
+### Structure Adaptation by Project Type
+
+| Project Type | Commands → | Code Style → | Constraints → |
+|-------------|-----------|-------------|--------------|
+| Claude Code extension / skill repo | Validation scripts for skill structure | File naming, SKILL.md frontmatter conventions | Skill boundaries, cross-skill rules, HARD GATE compliance |
+| Config-only repo | Lint/validate config files | Key naming, hierarchy, format rules | Config change policies, no silent modifications |
+| Docs-only repo | Link check, spell check | Heading conventions, link formats | No stale docs, review requirements |
+| IaC / infra repo (Terraform, Pulumi, etc.) | `terraform validate`, `pulumi preview` | Module naming, variable conventions | Plan-before-apply, state file safety |
+| CI / workflow repo | `act` dry-run, YAML schema validation | Workflow naming, trigger conventions | No secrets in logs, workflow testing before merge |
+| Docker / container repo | `docker build --check`, `hadolint` | Dockerfile best practices, layer conventions | Image size limits, no secrets in layers |
+
+Last row is catch-all: if project type doesn't fit any above, derive closest match from detection signals.
+
+### Detection Signals (must match Change A in SKILL.md)
+
+| Signal | Likely Type |
+|--------|-------------|
+| `.claude/skills/` directory present, no build config files | Claude Code extension project |
+| Only `.md`, `.yaml`, `.json`, `.toml` files | Config or docs project |
+| `skills/*/SKILL.md` file pattern | Skill collection |
+| No `src/`, `lib/`, `app/`, `cmd/`, `pkg/` directory | Non-compiled project |
+| `*.tf` / `*.tfvars` / `Pulumi.yaml` files, no `src/` | IaC project |
+| `.github/workflows/*.yml` as primary content | CI / workflow project |
+| `Dockerfile` + no package manager config | Docker / container project |
+
 ## Info Gathering Strategy
 
 ### Auto-Detect (skill verifies -- do NOT ask user about these)
