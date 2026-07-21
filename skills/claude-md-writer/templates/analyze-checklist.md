@@ -23,6 +23,14 @@ Use this when reviewing an existing CLAUDE.md against the global constitution.
 - [ ] Only flag if the global rule explicitly demands project-level declaration
 - [ ] Does NOT apply to behavioral rules ("discuss before implement", "answer in Chinese")
 
+### Skill Reference Quality (advisory)
+
+Not a blocking check. If project CLAUDE.md lists skill files without describing what each does or when to trigger:
+
+- [ ] (advisory) Skill list entries have purpose description? Compare: `skills/foo/SKILL.md` (insufficient) vs `skills/foo/SKILL.md — 生成 7 维 spec，用户提需求时触发` (usable)
+- Suggested format: `| Skill | 用途 | 触发场景 |`
+- If missing → report as `[ADVISORY] Skill list lacks descriptions — agent may not know when to invoke`
+
 ### Execution-Plan Smell (Procedural rules in wrong place)
 
 参照 Constraint 1 if/when 边界表判断。
@@ -41,6 +49,7 @@ A rule should move to a hook when:
 - [ ] It's a file existence check or format guard
 - [ ] It's fully automatable with no judgment required
 - Output format: `[HOOK] "<rule text>" → <suggested hook event + matcher>`
+- [ ] OUTPUT MANDATORY: every Phase 2 → Hooks run must produce text. Even if zero candidates: "No hooks candidates identified — no deterministic/event-triggered rules found." Silent skip (checklist ticked but no text output) = Mode B violation, step incomplete.
 
 ### → Skills (workflow logic)
 

@@ -74,11 +74,52 @@ Ambiguous input (e.g. "look at the rules") defaults to Mode B, with a hint about
 
 1. `PREREQUISITE` **Read global config** — Use Read tool to load `~/.claude/CLAUDE.md`. MANDATORY. If missing, warn user and downgrade to project-only mode (do not block). GATE: Do not proceed to step 2 until this read completes with a real tool call.
 2. `PREREQUISITE` **Extract user profile** — From global CLAUDE.md output: language preference, verbosity style (caveman/full), autonomy mode (discuss/implement phases), hard constraints. Only extract explicitly stated content — do not infer. Write these down so you can reference them in step 5.
-3. `PREREQUISITE` **Scan project** — Glob depth=2, ignore: `node_modules/`, `dist/`, `build/`, `.git/`, `coverage/`, `target/`, `vendor/`, `.next/`, `__pycache__/`, `.tox/`. Detect: directory structure, language/framework (package.json, go.mod, Cargo.toml, etc.), build tools (Makefile, justfile, CI configs), test conventions (file patterns, top 2 levels only), code style (sample up to 5 key source files, prefer src/, main entry, package entry). Use real Glob/Read tool calls — do not guess.
-4. `USER-GATE` **Mature project check** — If project has many existing files, ask user: "Detected a mature project. Create new CLAUDE.md?" **STOP HERE.** Wait for user response. Do NOT proceed to step 5 until user replies.
-5. `SELF-CHECK` **Generate draft** — PREREQUISITES: steps 1-4 MUST be complete. Before generating, self-check: (a) Did I read global CLAUDE.md with Read tool? (b) Did I write down user profile? (c) Did I scan the project with Glob? (d) Is every rule declarative (not a procedural step)? Check against Constraint 1 if/when boundary table. If any answer is NO — go back, do NOT generate. Use `templates/new-project-prompt.md`. Align language, style, and autonomy rules with user profile from step 2. Target: concise, project-specific, under 300 lines.
-6. `PREREQUISITE` **Validate vs global** — Compare draft against global CLAUDE.md. Auto-correct Override conflicts BEFORE presenting to user. If Override Exception applies (language/docs/tech-stack only), include `> [!NOTE] Overrides Global: <reason>` marker and highlight for user attention. GATE: Do NOT present a draft that you know violates the global constitution.
-7. `USER-GATE` **Present for batch confirmation** — Show draft with profile-filtered parameter checklist. Technical facts come from workspace discovery (Step 3: Scan project), not from user confirmation. If profile from Step 2 says beginner: ask behavioral preferences ONLY, 0 technical questions. See template Part 2. **STOP HERE. Wait for explicit user confirmation.** Do NOT proceed to step 8 until user confirms. If user asks questions about the draft — answer, but do NOT write.
+3. `PREREQUISITE` **Scan project** — Glob depth=2, ignore: `node_modules/`, `dist/`, `build/`, `.git/`, `coverage/`, `target/`, `vendor/`, `.next/`, `__pycache__/`, `.tox/`. Detect: directory structure, language/framework (package.json, go.mod, Cargo.toml, etc.), build tools (Makefile, justfile, CI configs), test conventions (file patterns, top 2 levels only), code style (sample up to 5 key source files, prefer src/, main entry, package entry), OS: check `uname -s` / `$env:OS` for shell syntax selection. Use real Glob/Read tool calls — do not guess.
+
+   After scan, also detect OS for command syntax: `uname -s` (Unix/Linux/macOS) or `$env:OS` (Windows). Note result for Commands section formatting.
+
+   Classify project type by detection signals:
+
+   | Type | Signals | Template |
+   |------|---------|----------|
+   | **Standard** | package.json / go.mod / Cargo.toml / pyproject.toml / Makefile present; `src/` or `lib/` or `app/` directory exists | standard template as-is |
+   | **Non-standard** | No build system config; no `src/`/`lib/`/`app/` directory; `.claude/skills/` present OR only `.md`/`.yaml`/`.json`/`.toml` files OR `skills/*/SKILL.md` pattern OR no compiled sources | Non-Standard Projects adapter (see template) |
+   | **Mixed** | Both build config AND `.claude/skills/` or skill/config directories present | Use standard template for code sections + Non-Standard adapter for skill/config sections. Merge: commands from both, style from both, constraints unified |
+
+   Detection signals — collect ALL signals first, then apply classification table. Order = signal reliability (strongest first), NOT a stop-at-first-match rule:
+   1. `.claude/skills/` directory → Claude Code extension / skill collection
+   2. Only `.md`, `.yaml`, `.json`, `.toml` files → config or docs project
+   3. `skills/*/SKILL.md` pattern → skill collection
+   4. No `src/`, `lib/`, `app/`, `cmd/`, `pkg/` directory → non-compiled project
+   5. Build config file present + source directory exists → standard project
+4. `USER-GATE` **Mature project check** — If project has many existing files, ask user: "Detected a mature project. Create new CLAUDE.md?" **STOP HERE.** Wait for user response.
+   `SELF-CHECK` (before proceeding to Step 5): (a) Did I present the question? If NO → present it now and wait. (b) Did user explicitly reply with "yes"/"create"/"proceed"? If YES → gate passed. If user replied with something else → clarify and re-ask. If no reply yet → WAIT, do NOT re-ask (re-asking spams the user).
+   Do NOT proceed to step 5 until user replies.
+5. `SELF-CHECK` **Generate draft** — PREREQUISITES: steps 1-4 MUST be complete. Before generating, self-check: (a) Did I read global CLAUDE.md with Read tool? (b) Did I write down user profile? (c) Did I scan the project with Glob? (d) Is every rule declarative (not a procedural step)? Check against Constraint 1 if/when boundary table. If any answer is NO — go back, do NOT generate. Use `templates/new-project-prompt.md`.
+   - If Standard → use standard template as-is.
+   - If Non-standard → use template "Non-Standard Projects" adapter section. Commands section MUST provide verification commands even if no build system exists — see template for formats.
+   - If Mixed → apply both: standard template for code sections + Non-Standard adapter for skill/config sections.
+   Align language, style, and autonomy rules with user profile from step 2. Target: concise, project-specific, under 300 lines.
+6. `PREREQUISITE` **Validate vs global** — Compare draft against global CLAUDE.md. MUST produce explicit mapping before presenting to user:
+   1. List every global rule as a row in status table:
+      | Global Rule | Status | Action |
+      |------------|--------|--------|
+      | `<rule text>` | Inherited / Overridden / Duplicated / Missing / N/A | Keep / Add Override marker / Remove / Flag-or-Fill / — |
+   2. Status definitions:
+      - Inherited: project follows global rule without modification → Keep
+      - Overridden: project needs different behavior → MUST have `> [!NOTE] Overrides Global: <reason>` marker. Verify present.
+      - Duplicated: project repeats global verbatim → suggest removal
+      - Missing: global requires project-level declaration (commands, tech stack) and project is silent → Flag in report, or Fill from scan data
+      - N/A: rule does not apply to this project type → skip
+   3. If Override marker missing → add BEFORE presenting draft.
+   4. GATE: Do NOT present a draft with unmapped global rules or unmarked overrides.
+7. `USER-GATE` **Present for batch confirmation** — Show draft. MUST output ALL below in the message body:
+   - **Part 1 — Self-verify results** (completed checklist from template, all 7 items ticked or flagged). Do NOT skip this section.
+   - **Part 2 — User questions** (filtered by profile from Step 2)
+   - **Draft** (the generated CLAUDE.md content)
+   If Part 1 or Part 2 is missing → GATE NOT PASSED, re-output with all required sections.
+   `SELF-CHECK` (before presenting): Count sections — are Part 1, Part 2, and Draft all present? If any missing → GATE NOT PASSED.
+   Technical facts come from workspace discovery (Step 3), not user confirmation. Beginner profile → behavioral questions ONLY, 0 technical. **STOP HERE. Wait for explicit user confirmation.** Do NOT proceed to step 8 until user confirms. If user asks questions about the draft — answer, but do NOT write.
 8. **Write** — Write `CLAUDE.md` to project root. Only after step 7 USER-GATE passes. If target exists, diff first then overwrite.
 
 ---
@@ -93,7 +134,9 @@ Ambiguous input (e.g. "look at the rules") defaults to Mode B, with a hint about
 2. `PREREQUISITE` **Scan project** — Same scan protocol as Mode A step 3. Use real Glob/Read tools.
 3. `USER-GATE` **Missing CLAUDE.md?** — If no project-level CLAUDE.md exists, output scan findings and ask: "No project CLAUDE.md found. Switch to Create mode to generate one?" **STOP HERE. Wait for user response.**
 4. **Conflict detection** — Use `templates/analyze-checklist.md`. Check Override / Duplicate / Missing across all levels.
-5. **Hooks candidates** — Identify deterministic rules (format checks, file existence guards) that could move to hooks.
+5. `PREREQUISITE` **Hooks candidates** — from `templates/analyze-checklist.md` Phase 2 → Hooks checklist. Identify deterministic rules (format checks, file existence guards, event-triggered checks). MUST output EACH candidate in format: `[HOOK] "<rule text>" → <hook event> | <matcher>`. If zero candidates found, MUST output: "No hooks candidates identified — no deterministic/event-triggered rules found in project CLAUDE.md."
+   Silent skip (proceeding to Step 6 without either candidates or explicit "none found" statement) = Mode B violation.
+   GATE: Do NOT proceed to Step 6 without this output.
 6. **Skills candidates** — Identify procedural rules that could move into dedicated skills.
 7. **Generate improvement list** — Prioritize: Override conflicts (highest), then Duplicates, then Missing, then Hooks/Skills candidates.
 8. `USER-GATE` **Confirm item by item** — Present findings. User confirms each change individually. **STOP HERE. Wait for explicit confirmation before executing.**
@@ -147,6 +190,7 @@ Ambiguous input (e.g. "look at the rules") defaults to Mode B, with a hint about
 | Output hook config to stdout | Modify `settings.json` directly |
 | Suggest rules → skills migration | Create skills (use `writing-skills` skill) |
 | Rule quality and correctness | Code↔docs sync (use `neat-freak` skill) |
+| Detect non-CLAUDE.md doc requirements referenced in project baselines (README, CONTRIBUTING.md, 开发流程.txt, SDLC docs that name files like CONSTITUTION.md, GOVERNANCE.md, etc.) | Generate those docs — report detection, warn user, suggest manual creation or relevant skill |
 
 Recommended workflow: `/init` → this skill (Mode B, audit) → refine.
 
@@ -179,3 +223,7 @@ Other violations:
 - Serial one-by-one questioning in Mode A -- use batch confirmation
 - Letting user choose on Override conflicts -- global wins by default
 - Skipping a USER-GATE — always STOP and WAIT
+- USER-GATE without checklist output — presenting a draft without Part 1 + Part 2 checklist in the message = gate not honored, add both sections and re-present
+- Skipping project type classification — Step 3 must classify as Standard, Non-standard, or Mixed before template selection
+- Silent hooks candidates in Mode B — Step 5 must output hook config or explicit "none found" statement
+- Mixed project treated as Standard-only — when both build config and skill/config dirs present, must merge templates; do not drop Non-Standard adapter
